@@ -29,7 +29,7 @@ headers = {"Authorization": f"Bearer {API_TOKEN}"}
 
 # Retry settings
 MAX_RETRIES = 3
-RETRY_DELAY = 2  # Seconds between retries
+RETRY_DELAY = 2  #
 
 def generate_lyrics_prompt(song_title):
     """Generate a prompt that clearly separates instructions from the expected output."""
@@ -48,14 +48,14 @@ def clean_lyrics(text):
 
     # Split the text to remove any part before and including "Lyrics:"
     parts = re.split(r'Lyrics:\s*', text, flags=re.IGNORECASE)
-    lyrics_part = parts[-1]  # Take the last part after splitting
+    lyrics_part = parts[-1] 
 
     # Remove unwanted patterns and markdown
     unwanted_patterns = [
         r"Output:", 
         r"Song:", 
-        r"\*\*.*?\*\*",  # Removes bold markdown
-        r"\*.*?\*"        # Removes italics markdown
+        r"\*\*.*?\*\*", 
+        r"\*.*?\*"       
     ]
 
     for pattern in unwanted_patterns:
@@ -105,35 +105,31 @@ def generate_snippet():
         payload = {
             "inputs": prompt,
             "parameters": {
-                "max_length": 150,   # Increased max length for better output
-                "temperature": 0.85, # More creative output
+                "max_length": 150,
+                "temperature": 0.85,
                 "do_sample": True
             }
         }
 
-        # Query the Hugging Face API with retry logic
         response = query_huggingface_api(payload)
 
-        # Extract and clean lyrics
         if isinstance(response, list) and len(response) > 0 and 'generated_text' in response[0]:
             lyrics = clean_lyrics(response[0]['generated_text'])
         else:
             lyrics = "No lyrics generated. Please try again."
 
-        # Store correct title in session
         session['correct_title'] = selected_song
 
-        return jsonify({
-            'lyrics': lyrics,
-            'error': None
-        })
+        res = jsonify({'lyrics': lyrics, 'error': None})
+        res.headers.add('Access-Control-Allow-Origin', '*')  
+        res.headers.add('Access-Control-Allow-Credentials', 'true')
+        return res
 
     except Exception as e:
         logger.error(f"Error generating lyrics: {str(e)}")
-        return jsonify({
-            'lyrics': None,
-            'error': "Failed to generate lyrics. Please try again later."
-        }), 500
+        res = jsonify({'lyrics': None, 'error': "Failed to generate lyrics. Please try again later."})
+        res.headers.add('Access-Control-Allow-Origin', '*')
+        return res, 500
 
 @app.route('/api/check', methods=['POST'])
 def check_answer():
