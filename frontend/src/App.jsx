@@ -1,6 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
-import "./App.css";  // Import the CSS file
+import "./App.css";  
 
 function App() {
   const [lyrics, setLyrics] = useState("");
@@ -9,7 +9,7 @@ function App() {
   const [correctTitle, setCorrectTitle] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [isChecking, setIsChecking] = useState(false);  // New state for checking loader
+  const [isChecking, setIsChecking] = useState(false);  
 
   const API_BASE = "https://lyricsmatcher.onrender.com/api";
 
@@ -71,7 +71,7 @@ function App() {
 
   return (
     <div className="container">
-      <h1 className="title">🎵 Lyric Match</h1>
+      <h1 className="title">🎵 Lyric Matcher</h1>
 
       <div className="card">
         <button
