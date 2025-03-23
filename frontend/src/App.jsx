@@ -11,7 +11,7 @@ function App() {
   const [error, setError] = useState("");
   const [isChecking, setIsChecking] = useState(false);  // New state for checking loader
 
-  const API_BASE = "http://localhost:5000/api";
+  const API_BASE = "https://lyricsmatcher.onrender.com/api";
 
   const generateLyrics = async () => {
     try {
