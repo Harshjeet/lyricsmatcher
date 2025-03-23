@@ -96,6 +96,7 @@ def query_huggingface_api(payload):
 
 @app.route('/api/generate', methods=['POST'])
 def generate_snippet():
+    """Generate lyrics snippet."""
     try:
         selected_song = random.choice(SONG_TITLES)
         logger.info(f"Generating lyrics for: {selected_song}")
@@ -104,32 +105,35 @@ def generate_snippet():
         payload = {
             "inputs": prompt,
             "parameters": {
-                "max_length": 150,
-                "temperature": 0.85,
+                "max_length": 200,   
+                "temperature": 0.85, 
                 "do_sample": True
             }
         }
 
+        # Query the Hugging Face API with retry logic
         response = query_huggingface_api(payload)
 
+        # Extract and clean lyrics
         if isinstance(response, list) and len(response) > 0 and 'generated_text' in response[0]:
             lyrics = clean_lyrics(response[0]['generated_text'])
         else:
             lyrics = "No lyrics generated. Please try again."
 
+        # Store correct title in session
         session['correct_title'] = selected_song
 
-        res = make_response(jsonify({'lyrics': lyrics, 'error': None}))
-        res.headers['Access-Control-Allow-Origin'] = request.headers.get('Origin', 'http://localhost:5173')
-        res.headers['Access-Control-Allow-Credentials'] = 'true'
-        return res
+        return jsonify({
+            'lyrics': lyrics,
+            'error': None
+        })
 
     except Exception as e:
         logger.error(f"Error generating lyrics: {str(e)}")
-        res = make_response(jsonify({'lyrics': None, 'error': "Failed to generate lyrics. Please try again later."}))
-        res.headers['Access-Control-Allow-Origin'] = request.headers.get('Origin', 'http://localhost:5173')
-        res.headers['Access-Control-Allow-Credentials'] = 'true'
-        return res, 500
+        return jsonify({
+            'lyrics': None,
+            'error': "Failed to generate lyrics. Please try again later."
+        }), 500
 
 
 @app.route('/api/check', methods=['POST'])
