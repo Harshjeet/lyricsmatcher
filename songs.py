@@ -1,0 +1,22 @@
+SONG_TITLES = [
+    "Bohemian Rhapsody - Queen",
+    "Hotel California - Eagles",
+    "Imagine - John Lennon",
+    "Hey Jude - The Beatles",
+    "Smells Like Teen Spirit - Nirvana",
+    "Billie Jean - Michael Jackson",
+    "Like a Rolling Stone - Bob Dylan",
+    "I Will Always Love You - Whitney Houston",
+    "Sweet Child o' Mine - Guns N' Roses",
+    "Rolling in the Deep - Adele",
+    "Shape of You - Ed Sheeran",
+    "Despacito - Luis Fonsi",
+    "Uptown Funk - Mark Ronson",
+    "Shallow - Lady Gaga & Bradley Cooper",
+    "Blinding Lights - The Weeknd",
+    "Someone Like You - Adele",
+    "Wonderwall - Oasis",
+    "Thriller - Michael Jackson",
+    "Poker Face - Lady Gaga",
+    "Yesterday - The Beatles"
+]
