@@ -9,6 +9,7 @@ function App() {
   const [correctTitle, setCorrectTitle] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isChecking, setIsChecking] = useState(false);  // New state for checking loader
 
   const API_BASE = "http://localhost:5000/api";
 
@@ -22,12 +23,17 @@ function App() {
 
       const response = await axios.post(`${API_BASE}/generate`, {}, { withCredentials: true });
 
+      if (response.data.error) {
+        throw new Error(response.data.error);
+      }
+
       setTimeout(() => {
         setLyrics(response.data.lyrics);
         setIsLoading(false);
       }, 1500); 
     } catch (err) {
-      setError("Failed to generate lyrics. Please try again.");
+      console.error("Error generating lyrics:", err);
+      setError(err.response?.data?.error || "Failed to get lyrics. Please try again.");
       setIsLoading(false);
     }
   };
@@ -39,13 +45,21 @@ function App() {
         return;
       }
 
+      setIsChecking(true);  
       const response = await axios.post(`${API_BASE}/check`, { guess: guess.trim() }, { withCredentials: true });
+
+      if (response.data.error) {
+        throw new Error(response.data.error);
+      }
 
       setResult(response.data.is_correct);
       setCorrectTitle(response.data.correct_title);
       setError("");
     } catch (err) {
+      console.error("Error checking answer:", err);
       setError("Failed to check answer. Please try again.");
+    } finally {
+      setIsChecking(false);  
     }
   };
 
@@ -84,8 +98,12 @@ function App() {
               placeholder="Enter your guess..."
               className="input"
             />
-            <button onClick={checkAnswer} className="btn check-btn">
-              ✅ Check Answer
+            <button
+              onClick={checkAnswer}
+              className="btn check-btn"
+              disabled={isChecking}
+            >
+              {isChecking ? "🔍 Checking..." : "✅ Check Answer"}
             </button>
           </div>
         )}
