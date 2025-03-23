@@ -1,9 +1,11 @@
 from flask import Flask, request, jsonify, session
 from flask_cors import CORS
 import random
-from transformers import pipeline
+import requests
 from songs import SONG_TITLES
 import logging
+import time
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -11,100 +13,147 @@ logger = logging.getLogger(__name__)
 
 # Initialize Flask app
 app = Flask(__name__)
-app.secret_key = 'sdkjfsU&$jb&&hEee8'  
-# Add these configurations after initializing the Flask app
+app.secret_key = 'sdkjfsU&$jb&&hEee8'
 app.config.update(
-    SESSION_COOKIE_SECURE=False,  
-    SESSION_COOKIE_SAMESITE='Lax' 
+    SESSION_COOKIE_SECURE=False,
+    SESSION_COOKIE_SAMESITE='Lax'
 )
 CORS(app, supports_credentials=True, origins=["http://localhost:5173"])
 
-# Load the FLAN-T5 model
-logger.info("Loading FLAN-T5 model...")
-lyric_generator = pipeline(
-    "text2text-generation",
-    model="google/flan-t5-base",
-    device=-1  
-)
-logger.info("Model loaded successfully")
+# Hugging Face API configuration
+API_URL = "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta"
+API_TOKEN = "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" 
+headers = {"Authorization": f"Bearer {API_TOKEN}"}
+
+# Retry settings
+MAX_RETRIES = 3
+RETRY_DELAY = 2  # Seconds between retries
 
 def generate_lyrics_prompt(song_title):
-    return f"""Generate 3-4 lines of lyrics from the song "{song_title}" without mentioning the title.
-The lyrics should be recognizable but not directly reveal the song title. Put each line on a new line.
+    """Generate a prompt that clearly separates instructions from the expected output."""
+    title, artist = song_title.split(' - ')
+    return f"""Write 4 lines of song lyrics in the style and mood of "{title}" by {artist}.
+The lyrics should reflect the song's themes and rhythm without mentioning the title or artist.
+Use metaphors and poetic language consistent with the song's style.
 
-Example:
-Input: "Hotel California - Eagles"
-Output:
-On a dark desert highway, cool wind in my hair
-Warm smell of colitas rising up through the air
-Up ahead in the distance, I saw a shimmering light
-
-Now generate for "{song_title}":
+Lyrics:
 """
 
 def clean_lyrics(text):
-    # Remove unwanted phrases and normalize
-    removals = ["Output:", "Lyrics:", "Song:", "**", "*"]
-    for phrase in removals:
-        text = text.replace(phrase, "")
-    
-    # Process lines and preserve newlines
-    lines = [line.strip() for line in text.split('\n') if line.strip()]
-    return '\n'.join(lines)
+    """Clean and format the lyrics, removing the initial prompt part."""
+    if not text:
+        return "No lyrics generated."
+
+    # Split the text to remove any part before and including "Lyrics:"
+    parts = re.split(r'Lyrics:\s*', text, flags=re.IGNORECASE)
+    lyrics_part = parts[-1]  # Take the last part after splitting
+
+    # Remove unwanted patterns and markdown
+    unwanted_patterns = [
+        r"Output:", 
+        r"Song:", 
+        r"\*\*.*?\*\*",  # Removes bold markdown
+        r"\*.*?\*"        # Removes italics markdown
+    ]
+
+    for pattern in unwanted_patterns:
+        lyrics_part = re.sub(pattern, '', lyrics_part, flags=re.IGNORECASE)
+
+    # Extract lines and ensure only 4 are kept
+    lines = [line.strip() for line in lyrics_part.split('\n') if line.strip()]
+    return '\n'.join(lines[:4]) if lines else "No valid lyrics generated."
+def query_huggingface_api(payload):
+    """Query the Hugging Face API with retry logic."""
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            logger.info(f"Attempt {attempt} to query Hugging Face API...")
+
+            response = requests.post(
+                API_URL, headers=headers, json=payload, timeout=15
+            )
+
+            if response.status_code == 200:
+                return response.json()
+
+            logger.warning(f"Failed attempt {attempt}: {response.status_code} - {response.text}")
+
+            if attempt < MAX_RETRIES:
+                time.sleep(RETRY_DELAY * attempt)
+            else:
+                response.raise_for_status()
+
+        except requests.RequestException as e:
+            logger.error(f"Request failed: {str(e)}")
+
+            if attempt < MAX_RETRIES:
+                time.sleep(RETRY_DELAY * attempt)
+            else:
+                raise
+
+    raise Exception("Failed to query Hugging Face API after retries.")
 
 @app.route('/api/generate', methods=['POST'])
 def generate_snippet():
+    """Generate lyrics snippet."""
     try:
         selected_song = random.choice(SONG_TITLES)
         logger.info(f"Generating lyrics for: {selected_song}")
-        
-        # Generate lyrics
-        response = lyric_generator(
-            generate_lyrics_prompt(selected_song),
-            max_length=1000, 
-            num_return_sequences=1,
-            temperature=0.9,
-            do_sample=True
-        )
-        
-        lyrics = clean_lyrics(response[0]['generated_text'])
-        
-        # Store correct answer in session
+
+        prompt = generate_lyrics_prompt(selected_song)
+        payload = {
+            "inputs": prompt,
+            "parameters": {
+                "max_length": 150,   # Increased max length for better output
+                "temperature": 0.85, # More creative output
+                "do_sample": True
+            }
+        }
+
+        # Query the Hugging Face API with retry logic
+        response = query_huggingface_api(payload)
+
+        # Extract and clean lyrics
+        if isinstance(response, list) and len(response) > 0 and 'generated_text' in response[0]:
+            lyrics = clean_lyrics(response[0]['generated_text'])
+        else:
+            lyrics = "No lyrics generated. Please try again."
+
+        # Store correct title in session
         session['correct_title'] = selected_song
-        
+
         return jsonify({
             'lyrics': lyrics,
             'error': None
         })
-    
+
     except Exception as e:
         logger.error(f"Error generating lyrics: {str(e)}")
         return jsonify({
             'lyrics': None,
-            'error': "Failed to generate lyrics. Please try again."
+            'error': "Failed to generate lyrics. Please try again later."
         }), 500
 
 @app.route('/api/check', methods=['POST'])
 def check_answer():
+    """Check user's guess against the correct song title."""
     try:
         data = request.get_json()
         user_guess = data.get('guess', '').strip().lower()
         correct_title = session.get('correct_title', '').lower()
-        
+
         if not user_guess:
             return jsonify({'error': 'No guess provided'}), 400
-        
-        # Simple fuzzy matching
+
         is_correct = any([
             user_guess in correct_title,
             correct_title.split('-')[0].strip().lower() in user_guess
         ])
-        
+
         return jsonify({
             'is_correct': is_correct,
             'correct_title': session.get('correct_title', 'Unknown Song')
         })
-        
+
     except Exception as e:
         logger.error(f"Error checking answer: {str(e)}")
         return jsonify({'error': 'Failed to check answer'}), 500

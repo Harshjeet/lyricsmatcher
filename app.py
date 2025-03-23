@@ -4,9 +4,8 @@ import random
 import requests
 from songs import SONG_TITLES
 import logging
-import time 
+import time
 import re
-import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -23,8 +22,7 @@ CORS(app, supports_credentials=True, origins=["http://localhost:5173"])
 
 # Hugging Face API configuration
 API_URL = "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta"
-API_TOKEN =  "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"
-print(API_TOKEN)
+API_TOKEN = "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" 
 headers = {"Authorization": f"Bearer {API_TOKEN}"}
 
 # Retry settings
