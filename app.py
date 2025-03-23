@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, session
+from flask import Flask, request, jsonify, session, make_response
 from flask_cors import CORS
 import random
 import requests
@@ -96,7 +96,6 @@ def query_huggingface_api(payload):
 
 @app.route('/api/generate', methods=['POST'])
 def generate_snippet():
-    """Generate lyrics snippet."""
     try:
         selected_song = random.choice(SONG_TITLES)
         logger.info(f"Generating lyrics for: {selected_song}")
@@ -120,16 +119,18 @@ def generate_snippet():
 
         session['correct_title'] = selected_song
 
-        res = jsonify({'lyrics': lyrics, 'error': None})
-        res.headers.add('Access-Control-Allow-Origin', '*')  
-        res.headers.add('Access-Control-Allow-Credentials', 'true')
+        res = make_response(jsonify({'lyrics': lyrics, 'error': None}))
+        res.headers['Access-Control-Allow-Origin'] = request.headers.get('Origin', 'http://localhost:5173')
+        res.headers['Access-Control-Allow-Credentials'] = 'true'
         return res
 
     except Exception as e:
         logger.error(f"Error generating lyrics: {str(e)}")
-        res = jsonify({'lyrics': None, 'error': "Failed to generate lyrics. Please try again later."})
-        res.headers.add('Access-Control-Allow-Origin', '*')
+        res = make_response(jsonify({'lyrics': None, 'error': "Failed to generate lyrics. Please try again later."}))
+        res.headers['Access-Control-Allow-Origin'] = request.headers.get('Origin', 'http://localhost:5173')
+        res.headers['Access-Control-Allow-Credentials'] = 'true'
         return res, 500
+
 
 @app.route('/api/check', methods=['POST'])
 def check_answer():

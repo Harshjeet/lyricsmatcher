@@ -20,17 +20,23 @@ function App() {
       setLyrics("");
       setResult(null);
       setCorrectTitle("");
-
-      const response = await axios.post(`${API_BASE}/generate`, {}, { withCredentials: true });
-
+  
+      const response = await axios.post(`${API_BASE}/generate`, {}, {
+        withCredentials: true, 
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        }
+      });
+  
       if (response.data.error) {
         throw new Error(response.data.error);
       }
-
+  
       setTimeout(() => {
         setLyrics(response.data.lyrics);
         setIsLoading(false);
-      }, 1500); 
+      }, 1500);
     } catch (err) {
       console.error("Error generating lyrics:", err);
       setError(err.response?.data?.error || "Failed to get lyrics. Please try again.");
