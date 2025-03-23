@@ -18,7 +18,7 @@ app.config.update(
     SESSION_COOKIE_SECURE=False,
     SESSION_COOKIE_SAMESITE='Lax'
 )
-CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
+CORS(app, supports_credentials=True, origins=["http://localhost:5173", "https://lyricsmatcher.onrender.com"])
 
 
 
